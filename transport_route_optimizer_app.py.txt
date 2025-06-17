@@ -1,0 +1,65 @@
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+
+# Placeholder for automations.create
+class Automations:
+    def create(self, title, prompt, schedule):
+        # Here you would integrate with your automation/reminder system
+        print(f"Automation created: {title}, {prompt}, {schedule}")
+
+automations = Automations()
+
+# Diesel Cost Calculator
+st.set_page_config(page_title="Diesel Cost Calculator", page_icon="⛽")
+st.title("⛽ Diesel Cost & Usage Manager")
+
+# Section: Calculate consumption rate or input directly
+mode = st.radio("Fuel consumption mode:", ["Calculate rate from usage", "Enter rate directly"], index=0)
+
+if mode == "Calculate rate from usage":
+    distance = st.number_input("Distance traveled (km)", min_value=0.0, value=0.0)
+    fuel_used = st.number_input("Fuel used (liters)", min_value=0.0, value=0.0)
+    if distance > 0:
+        consumption_rate = fuel_used / distance * 100  # liters per 100km
+        st.write(f"Consumption rate: {consumption_rate:.2f} L/100km")
+    else:
+        st.write("Enter a distance greater than 0.")
+else:
+    consumption_rate = st.number_input("Enter consumption rate (L/100km)", min_value=0.0, value=0.0)
+
+diesel_price = st.number_input("Diesel price per liter", min_value=0.0, value=0.0)
+trip_distance = st.number_input("Trip distance (km)", min_value=0.0, value=0.0)
+
+if consumption_rate > 0 and diesel_price > 0 and trip_distance > 0:
+    total_fuel = (consumption_rate / 100) * trip_distance
+    total_cost = total_fuel * diesel_price
+    st.success(f"Total diesel needed: {total_fuel:.2f} L\nTotal cost: ₹{total_cost:.2f}")
+
+# Reminders for vehicle documents
+st.header("📅 Vehicle Document Expiry Reminders")
+with st.form("doc_reminders_form"):
+    vehicle_id = st.text_input("Vehicle ID (e.g. DMM-01)")
+    insp_date = st.date_input("Inspection expiry date")
+    reg_date = st.date_input("Registration expiry date")
+    op_date = st.date_input("Operating card expiry date")
+    btn = st.form_submit_button("Schedule Document Reminders")
+
+if btn and vehicle_id:
+    # Reminder one month before each expiry
+    for doc_name, expiry in [("Inspection", insp_date), ("Registration", reg_date), ("Operating Card", op_date)]:
+        # Title and prompt for automation
+        title = f"Remind {doc_name} for {vehicle_id}"
+        prompt = f"Tell me to remind that vehicle {vehicle_id} {doc_name.lower()} expires on {expiry}."
+        # Schedule one month prior
+        reminder_date = pd.Timestamp(expiry) - pd.DateOffset(months=1)
+        dt = reminder_date.strftime("%Y%m%dT090000")
+        schedule = (
+            "BEGIN:VEVENT\n"
+            f"DTSTART:{dt}\n"
+            "END:VEVENT"
+        )
+        automations.create(title=title, prompt=prompt, schedule=schedule)
+    st.success("✅ Document reminders scheduled via email!")
+else:
+    st.info("Fill in all fields to schedule reminders.")
